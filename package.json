@@ -1,0 +1,33 @@
+{
+  "name": "music-ranking-app",
+  "version": "1.0.0",
+  "description": "A music ranking application with Spotify integration and AI-powered playlist generation",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "cd backend && uvicorn src.main:app --reload --host 0.0.0.0 --port 8000",
+    "build": "npm run build --workspace=frontend",
+    "test": "npm run test --workspace=frontend && cd backend && pytest",
+    "lint": "npm run lint --workspace=frontend",
+    "install:backend": "cd backend && pip install -r requirements.txt"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  },
+  "keywords": [
+    "music",
+    "ranking",
+    "spotify",
+    "playlist",
+    "ai",
+    "recommendations",
+    "fastapi",
+    "nextjs"
+  ],
+  "author": "",
+  "license": "MIT"
+}

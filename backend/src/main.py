@@ -2,14 +2,20 @@
 Main FastAPI application entry point for the Music Ranking App.
 """
 
-from fastapi import FastAPI, HTTPException
+import os
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
 import uvicorn
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
+
+# Import database components
+from .database import init_db, get_db
+from .api import api_router
 
 # Create FastAPI instance
 app = FastAPI(
@@ -29,6 +35,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include API routes
+app.include_router(api_router)
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database on startup."""
+    try:
+        init_db()
+        print("✅ Database initialized successfully")
+    except Exception as e:
+        print(f"❌ Failed to initialize database: {e}")
+        raise
+
 
 @app.get("/")
 async def root():
@@ -42,9 +62,21 @@ async def root():
 
 
 @app.get("/health")
-async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "service": "music-ranking-api"}
+async def health_check(db: Session = Depends(get_db)):
+    """Health check endpoint with database connectivity test."""
+    try:
+        # Test database connection
+        db.execute("SELECT 1")
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    
+    return {
+        "status": "healthy" if db_status == "connected" else "degraded",
+        "service": "music-ranking-api",
+        "database": db_status,
+        "environment": os.getenv("NODE_ENV", "development")
+    }
 
 
 @app.get("/api/test")

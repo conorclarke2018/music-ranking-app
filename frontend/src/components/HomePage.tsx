@@ -129,7 +129,7 @@ export default function HomePage() {
                   </ul>
                 </div>
               </div>
-            )}
+            ) : null}
           </motion.div>
 
           {/* CTA Buttons */}

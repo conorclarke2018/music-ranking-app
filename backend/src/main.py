@@ -4,7 +4,6 @@ Main FastAPI application entry point for the Music Ranking App.
 
 import os
 from fastapi import FastAPI, HTTPException, Depends
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 import uvicorn
@@ -16,6 +15,9 @@ load_dotenv()
 # Import database components
 from .database import init_db, get_db
 from .api import api_router
+from .middleware.cors import register_middleware
+from .config import settings
+from .services.spotify_auth import SpotifyAuthService, spotify_auth_service
 
 # Create FastAPI instance
 app = FastAPI(
@@ -26,14 +28,8 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Next.js frontend
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Register middleware (e.g., CORS)
+register_middleware(app)
 
 # Include API routes
 app.include_router(api_router)
@@ -45,6 +41,19 @@ async def startup_event():
     try:
         init_db()
         print("✅ Database initialized successfully")
+        # Initialize Spotify app-level token refresh
+        if settings.spotify_client_id and settings.spotify_client_secret:
+            # Create singleton instance if not created yet
+            global spotify_auth_service
+            if spotify_auth_service is None:
+                spotify_auth_service = SpotifyAuthService(
+                    client_id=settings.spotify_client_id,
+                    client_secret=settings.spotify_client_secret,
+                )
+            await spotify_auth_service.start()
+            print("🎧 Spotify client token refresh started")
+        else:
+            print("⚠️ Spotify credentials not configured; skipping token refresh")
     except Exception as e:
         print(f"❌ Failed to initialize database: {e}")
         raise
@@ -59,6 +68,23 @@ async def root():
         "status": "active",
         "docs": "/docs"
     }
+
+@app.get("/spotify/auth")
+async def spotify_auth():
+    
+    return {
+        "message": "Spotify authentication endpoint"
+    }
+
+@app.get("/spotify/token")
+async def get_spotify_token():
+    """Return current app-level Spotify access token."""
+    if spotify_auth_service and spotify_auth_service.access_token:
+        return {"access_token": spotify_auth_service.access_token}
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Spotify token not initialized"}
+    )
 
 
 @app.get("/health")

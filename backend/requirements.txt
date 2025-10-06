@@ -34,3 +34,4 @@ pytest-asyncio>=0.21.1
 
 # Settings validation
 pydantic-settings>=2.0.0
+slowapi=>=0.1.9
